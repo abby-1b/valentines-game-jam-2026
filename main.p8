@@ -25,10 +25,13 @@ end
 -- title
 function draw_title()
 	print("cupid cupid!", 4, 64-8)
-	if(frame_count%20<10)
+	if(frame_count%20<10) then
 		print("[press ❎ to play]", 4, 64+8)
-	if(btn(❎))
+	end
+		
+	if(btn(❎)) then
 		screen=screen_game
+	end
 end
 
 -- intro
