@@ -3,25 +3,50 @@ version 43
 __lua__
 --main
 
+-- screen values
+screen_title=0
+screen_intro=1 -- not implemented
+screen_game=2
+
+frame_count=0
+
 function _init()
+	screen=screen_title
+end
+
+function _draw()
+	cls()
+	frame_count+=1
+	if(screen==screen_title)draw_title()
+	if(screen==screen_intro)draw_intro()
+	if(screen==screen_game)draw_game()
+end
+
+-- title
+function draw_title()
+	print("cupid cupid!", 4, 64-8)
+	if(frame_count%20<10)
+		print("[press ❎ to play]", 4, 64+8)
+	if(btn(❎))
+		screen=screen_game
+end
+
+-- intro
+function draw_intro()
 	
 end
 
-function _update60()
-	draw_title()
+-- game
+function draw_game()
+
 end
 
-function draw_title()
-	--todo:
-end
 -->8
 --player
 -->8
 --enemies
 -->8
 --background
--->8
---
 __gfx__
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
