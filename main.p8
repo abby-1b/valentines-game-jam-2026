@@ -84,11 +84,26 @@ function update_player(p)
 	p.dx*=friction
 	p.dy*=friction
 
+	--move
 	local speed=2
 	if btn(⬆️) then p.dy=-speed end
 	if btn(⬇️) then p.dy=speed end
 	if btn(⬅️) then p.dx=-speed end
 	if btn(➡️) then p.dx=speed end
+
+	--normalize
+	if p.dx*p.dy != 0 then
+		p.dx*=0.707
+		p.dy*=0.707
+	end
+	p.x+=p.dx
+	p.y+=p.dy
+
+	--collide
+	if p.x <=0 then p.x=0 end
+	if p.x >=113 then p.x=113 end
+	if p.y <=0 then p.y=0 end
+	if p.y >=113 then p.y=113 end
 	
 	p.cooldown-=1
 	if btnp(❎) and p.cooldown<=0 then
@@ -96,18 +111,6 @@ function update_player(p)
 		p.cooldown=player_reload_cooldown
 		make_arrow(p.x,p.y) 
 	end
-	
-	if p.dx*p.dy != 0 then
-		p.dx*=0.707
-		p.dy*=0.707
-	end
-	p.x+=p.dx
-	p.y+=p.dy
-	
-	if p.x <=0 then p.x=0 end
-	if p.x >=113 then p.x=113 end
-	if p.y <=0 then p.y=0 end
-	if p.y >=113 then p.y=113 end
 	
 end
 
