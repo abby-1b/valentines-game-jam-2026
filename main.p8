@@ -10,6 +10,7 @@ screen_game=2
 
 frame_count=0
 
+score=0
 function _init()
 	screen=screen_title
 	setup_clouds()
@@ -57,6 +58,9 @@ end
 -- game
 function draw_game()
 	cls(12)
+	
+	print("score: "..score,30,1,0)
+	draw_main_cloud()
 	foreach(clouds,draw_cloud)
 	draw_particles()
 	foreach(arrows,draw_arrow)
@@ -161,7 +165,9 @@ function update_arrow(arrow)
 	
 	for e in all(enemies) do
 		if collision(e,arrow) then
+			del(arrows,arrow)
 			del(enemies,e)
+			score+=100
 		end
 	end
 end
@@ -213,7 +219,7 @@ function update_all_enemies()
 	end
 end
 
-frames=2640
+frames=5000
 function update_enemy(e)
 	
 	e.path = get_line_pts(e,player.x+9,player.y+5)
@@ -288,6 +294,68 @@ function draw_cloud(c)
 	c.x+=c.dx
 	if(c.x<=-c.w*8)c.x=127
 end
+
+
+--crimes against god
+function draw_main_cloud()
+
+	if frame_count%2==0 then
+		circfill(3,126,28,7)
+		circ(3,126,28,6)
+		
+		circfill(24,115,10,7)
+		circ(24,115,10,6)
+		
+		circfill(6,120,13,7)
+		
+		circfill(35,118,7,7)
+		circ(35,118,7,6)
+		
+		circfill(45,125,8,7)
+		circ(45,125,8,6)
+		
+		circfill(70,128,10,7)
+		circ(70,128,10,6)
+		
+		circfill(58,126,10,7)
+		circ(58,126,10,6)
+		
+		circfill(53,133,11,7)
+		
+		circfill(65,127,5,7)
+		
+		circfill(30,135,17,7)
+		
+		circfill(90,129,14,7)
+		circ(90,129,14,6)
+		
+		circfill(76,129,7,7)
+		circ(76,129,7,6)
+		
+		circfill(122,120,15,7)
+		circ(122,120,15,6)
+		
+		circfill(108,120,7,7)
+		circ(108,120,7,6)
+		
+		circfill(105,129,13,7)
+		circ(105,129,13,6)
+		
+		circfill(113,130,10,7)
+		circ(113,130,10,6)
+		
+		circfill(90,129,8,7)
+		
+		circfill(125,125,8,7)
+		circ(125,125,8,6)
+		
+		circfill(70,127,2,7)
+		circfill(112,120,4,7)
+		circfill(116,123,4,7)
+	end
+	
+end
+
 -->8
 --particles
 p_arr={}
