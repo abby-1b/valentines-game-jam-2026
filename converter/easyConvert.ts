@@ -161,13 +161,13 @@ class OptimizedBitArrayWriter {
     this.writeBits(color, 4);
   }
 
-  finish(): Uint8Array {
+  finish(): number[] {
     if (this.bitPosition > 0) {
       // Pad with zeros to complete byte
       this.currentByte <<= (8 - this.bitPosition);
       this.buffer.push(this.currentByte);
     }
-    return new Uint8Array(this.buffer);
+    return this.buffer;
   }
 }
 
@@ -310,7 +310,7 @@ function optimizeRLEBlocks(blocks: RLEBlock[]): RLEBlock[] {
 }
 
 // Main compression function
-function compressImage(image: ImageData): Uint8Array {
+function compressImage(image: ImageData): number[] {
   // Convert to 2D array
   const colorArray = to2DArray(image);
   
@@ -413,6 +413,8 @@ Example:
 draw_ibg(x, y) => draws intro_bg at the given x, y position
 */
 
+let out = '';
+
 for (const [ filename, fnName ] of Object.entries(files)) {
   const fileData = await Deno.readFile(filename);
   const decoded = decode(fileData);
@@ -425,7 +427,13 @@ for (const [ filename, fnName ] of Object.entries(files)) {
 
   const compressed = compressImage(decoded);
   console.log(`Compressed size: ${compressed.length} bytes`);
-  console.log('Compressed data:', Array.from(compressed));
+  
+  while ((compressed.length + 1) % 128 != 0) compressed.push(0);
+  for (let i = 0; i < compressed.length; i++) {
+    if (i % 128 == 0) out += '\n';
+    out += compressed[i].toString(16).toLowerCase();
+  }
+  // console.log(out);
 
   // console.log('=== Layer Analysis ===');
   // visualizeLayers(layers);
@@ -437,3 +445,5 @@ for (const [ filename, fnName ] of Object.entries(files)) {
   // // console.log('images:', compressed.length);
   // Deno.writeTextFileSync('out.txt', toLua(fnName, compressed));
 }
+
+console.log(out);
