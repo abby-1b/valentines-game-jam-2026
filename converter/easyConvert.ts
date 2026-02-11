@@ -1,10 +1,5 @@
-import { decode, encode } from "https://deno.land/x/pngs/mod.ts";
+import { decode } from "https://deno.land/x/pngs/mod.ts";
 
-function chr(num: number) {
-  if (num < 93) throw new Error('out of range! ' + num);
-  const chars = ']^_`abcdefghijklmnopqrstuvwxyz{|}~○█▒🐱⬇️░✽●♥☉웃⌂⬅️😐♪🅾️◆…➡️★⧗⬆️ˇ∧❎▤▥あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわをんっゃゅょアイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲンッャュョ◜◝';
-  return chars[num - 93];
-}
 const P8_COLORS: { color: [number, number, number], idx: number }[] = [
   { color: [ 0  , 0  , 0   ], idx: 0 },
   { color: [ 29 , 43 , 83  ], idx: 1 },
@@ -81,11 +76,13 @@ class OptimizedBitArrayWriter {
   private currentByte = 0;
   private bitPosition = 0;
 
+  private bits = 4;
+
   writeBit(bit: number): void {
     this.currentByte = (this.currentByte << 1) | (bit & 1);
     this.bitPosition++;
     
-    if (this.bitPosition === 4) {
+    if (this.bitPosition === this.bits) {
       this.buffer.push(this.currentByte);
       this.currentByte = 0;
       this.bitPosition = 0;
@@ -169,7 +166,7 @@ class OptimizedBitArrayWriter {
   finish(): number[] {
     if (this.bitPosition > 0) {
       // Pad with zeros to complete byte
-      this.currentByte <<= (8 - this.bitPosition);
+      this.currentByte <<= (this.bits - this.bitPosition);
       this.buffer.push(this.currentByte);
     }
     return this.buffer;
@@ -271,7 +268,7 @@ function optimizedRLECompress(mask: (0 | 1 | 2)[][]): RLEBlock[] {
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const pixel = mask[y][x];
-      if (pixel === 2) continue; // here to test if "don't care pixels" work!
+      // if (pixel === 2) continue; // here to test if "don't care pixels" work!
 
       if (pixel === lastValue || pixel === 2) {
         currentLength++;
@@ -340,8 +337,6 @@ function compressImage(image: ImageData): number[] {
     // Perform optimized RLE compression
     const rleBlocks = optimizedRLECompress(layer.mask);
 
-    // console.log(rleBlocks.filter(b => b.value != 0));
-
     // Write block count (optimized)
     writer.writeBlockCount(rleBlocks.length);
 
@@ -356,17 +351,6 @@ function compressImage(image: ImageData): number[] {
   }
   
   return writer.finish();
-}
-
-// Bonus: Decompression function (for completeness)
-function decompressImage(data: Uint8Array): ImageData {
-  // This would implement the reverse of the above compression
-  // For brevity, just returning a placeholder
-  return {
-    width: 0,
-    height: 0,
-    image: new Uint8Array()
-  };
 }
 
 // Helper to analyze compression ratio
@@ -408,10 +392,10 @@ function analyzeCompression(original: ImageData, compressed: Uint8Array): void {
 
 // Dictionary of { filename: lua function name }
 const files = {
-  // "../assets/intro_bg.png": "draw_ibg",
+  "../assets/intro_bg.png": "draw_ibg",
   "../assets/intro_main.png": "draw_ibg",
-  // "../assets/intro_shad.png": "draw_ishad",
-  // "../assets/intro_fg.png": "draw_ifg",
+  "../assets/intro_shad.png": "draw_ishad",
+  "../assets/intro_fg.png": "draw_ifg",
 };
 /*
 Example:
@@ -433,9 +417,10 @@ for (const [ filename, fnName ] of Object.entries(files)) {
   const compressed = compressImage(decoded);
   console.log(`Compressed size: ${compressed.length} bytes`);
   
-  while ((compressed.length + 1) % 128 != 0) compressed.push(0);
+  while (compressed.length % 128 != 0) compressed.push(0);
   for (let i = 0; i < compressed.length; i++) {
     if (i % 128 == 0) out += '\n';
+    if (compressed[i] > 15) throw new Error('What the FUCK?? ' + compressed[i]);
     out += compressed[i].toString(16).toLowerCase();
   }
   // console.log(out);
