@@ -104,11 +104,16 @@ class OptimizedBitArrayWriter {
     // Encode: first bit indicates if value >= 128
     if (value < 128) {
       // Small value: store directly in 7 bits
+      this.writeBit(0);
       this.writeBits(value, 7);
     } else {
       // Large value: use 7-bit chunks with continuation bit
-      this.writeBits(0x80 | (value & 0x7F), 8); // First chunk with continuation bit
-      this.writeBits(value >>> 7, Math.ceil(Math.log2(value >>> 7 + 1))); // Remaining bits
+      while (true) {
+        this.writeBit(~~(value >= 128));
+        this.writeBits(value & 0x7F, 7);
+        if (value < 128) break;
+        value >>= 7;
+      }
     }
   }
 
@@ -266,9 +271,9 @@ function optimizedRLECompress(mask: (0 | 1 | 2)[][]): RLEBlock[] {
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const pixel = mask[y][x];
-      if (pixel === 2) continue; // Skip "don't care" pixels
-      
-      if (pixel === lastValue) {
+      if (pixel === 2) continue; // here to test if "don't care pixels" work!
+
+      if (pixel === lastValue || pixel === 2) {
         currentLength++;
       } else {
         if (lastValue !== null) {
@@ -321,8 +326,8 @@ function compressImage(image: ImageData): number[] {
   const writer = new OptimizedBitArrayWriter();
   
   // First, write basic info: width and height (using VLE)
-  writer.writeVLE(image.width);
-  writer.writeVLE(image.height);
+  writer.writeBits(image.width, 8);
+  writer.writeBits(image.height, 8);
   
   // Write number of layers (optimized)
   writer.writeBlockCount(layers.length);
@@ -335,7 +340,7 @@ function compressImage(image: ImageData): number[] {
     // Perform optimized RLE compression
     const rleBlocks = optimizedRLECompress(layer.mask);
 
-    // console.log(rleBlocks);
+    // console.log(rleBlocks.filter(b => b.value != 0));
 
     // Write block count (optimized)
     writer.writeBlockCount(rleBlocks.length);
@@ -403,10 +408,10 @@ function analyzeCompression(original: ImageData, compressed: Uint8Array): void {
 
 // Dictionary of { filename: lua function name }
 const files = {
-  "../assets/intro_bg.png": "draw_ibg",
-  "../assets/intro_main.png": "draw_imain",
-  "../assets/intro_shad.png": "draw_ishad",
-  "../assets/intro_fg.png": "draw_ifg",
+  // "../assets/intro_bg.png": "draw_ibg",
+  "../assets/intro_main.png": "draw_ibg",
+  // "../assets/intro_shad.png": "draw_ishad",
+  // "../assets/intro_fg.png": "draw_ifg",
 };
 /*
 Example:
@@ -444,6 +449,8 @@ for (const [ filename, fnName ] of Object.entries(files)) {
   // optimizeLayersAggressive(compressed, decoded.width, decoded.height);
   // // console.log('images:', compressed.length);
   // Deno.writeTextFileSync('out.txt', toLua(fnName, compressed));
+
+  console.log(filename);
 }
 
 console.log(out);
