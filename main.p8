@@ -17,6 +17,8 @@ function _init()
 	
 	enemy_setup()
 	make_enemy()
+	
+	make_power()
 end
 
 function _update60()
@@ -59,7 +61,7 @@ end
 function draw_game()
 	cls(12)
 	
-	print("score: "..score,30,1,0)
+	print("score: "..score.."00",30,1,0)
 	draw_main_cloud()
 	foreach(clouds,draw_cloud)
 	draw_particles()
@@ -67,6 +69,7 @@ function draw_game()
 	draw_player(player)
 	
 	foreach(enemies,draw_enemy)
+	foreach(powers,draw_power)
 end
 
 function update_game()
@@ -74,6 +77,7 @@ function update_game()
 	update_all_enemies()
 	foreach(arrows,update_arrow)
 	foreach(enemies,update_enemy)
+	foreach(powers,update_power)
 end
 
 -->8
@@ -81,9 +85,14 @@ end
 
 player_reload_cooldown=10
 
+power_cherub=1
+
 player={
 	x=20,
 	y=64,
+	w=7,
+	h=7,
+	power=0,
 	dx=0,
 	dy=0,
 	flap=0,
@@ -121,6 +130,11 @@ function update_player(p)
 		sfx(0)
 		p.cooldown=player_reload_cooldown
 		make_arrow(p.x,p.y) 
+		
+		if p.power==power_cherub then
+			make_cherub_arrow(p.x,p.y-16)
+			make_cherub_arrow(p.x,p.y+11)
+		end
 	end
 	
 end
@@ -141,11 +155,16 @@ function draw_player(p)
 	local x_offs=0
 	if(p.cooldown==player_reload_cooldown)x_offs=1
 	spr(p_spr,p.x-x_offs,p.y-y_offs,2,2)
+	
+	--powerup management
+	if p.power==power_cherub then
+		spr(9,player.x+6,player.y-10)
+		spr(9,player.x+6,player.y+17)
+	end
 end
 
 
 --projectile logic
-
 arrow_speed=3
 arrows={}
 
@@ -155,7 +174,17 @@ function make_arrow(x,y)
 	arrow.y=y+8
 	arrow.w=8
 	arrow.h=5
-	arrow.sprite=5
+	arrow.sprite=33
+	add(arrows,arrow)
+end
+
+function make_cherub_arrow(x,y)
+	local arrow={}
+	arrow.x=x+8
+	arrow.y=y+8
+	arrow.w=7
+	arrow.h=5
+	arrow.sprite=10
 	add(arrows,arrow)
 end
 
@@ -167,17 +196,54 @@ function update_arrow(arrow)
 		if collision(e,arrow) then
 			del(arrows,arrow)
 			del(enemies,e)
-			score+=100
+			score+=1
 		end
 	end
 end
 
+
 function draw_arrow(arrow)
-	spr(33,arrow.x-4,arrow.y-3,2,1)
-	if(frame_count%4==0)add_particle(arrow.x,arrow.y,arrow_speed*0.5,20,8)
+	spr(arrow.sprite,arrow.x-4,arrow.y-3,1+flr(arrow.w/8),1)
+	if frame_count%4==0 then
+		local col=8
+		if arrow.w<8 then
+			col=10
+		end
+		add_particle(arrow.x,arrow.y,arrow_speed*0.5,20,col)
+	end
 end
 
---power ups
+
+--powerup creation
+powers={}
+function make_power()
+	
+	
+	local power={}
+	power.x=rnd(30)+70
+	power.y=rnd(60)+30
+	power.w=8
+	power.h=6
+	power.type=1
+	power.sprite=9
+	add(powers,power)
+end
+
+function update_power(power)
+	
+	power.x-=0.2
+	if(power.x<=-8)del(powers,power)
+	
+	if collision(player,power) then
+		player.power=power_cherub
+		del(powers,power)
+	end
+	
+end
+
+function draw_power(power)
+	spr(power.sprite,power.x,power.y)
+end
 -->8
 --enemies
 
@@ -214,7 +280,7 @@ function make_enemy()
 end
 
 function update_all_enemies()
-	if frame_count%30==0 then
+	if frame_count%120==0 then
 		make_enemy()
 	end
 end
@@ -486,4 +552,7 @@ cf8619532786e00f0cb2270b78699138166378818d381f0c2f11b130e08ca7c529cb827c6ae09f1a
 a9e466a7914c33b2792997e5164794d8fe546379558783cacaf0e800000000000000000000000000000000000000000000000000000000000000000000000000
 __sfx__
 00020000296700000022650000001a6400000010620000000a6100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00f200001055013550145501555017550185501a5501660019600206001b60016600136001260013600186001d600206001a6001a6001f6001f6002160024600296002160021600276001f60022600226003d700
+00040000114701147011460104600f4600d4500a4400443000440004200e7002e7000e7002f70027000307000f70007700317001070031700107002f70010700247001070023100281003530022600226003d700
+__music__
+00 40414344
+
