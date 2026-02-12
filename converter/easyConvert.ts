@@ -402,6 +402,8 @@ Example:
 draw_ibg(x, y) => draws intro_bg at the given x, y position
 */
 
+let lineCount = 0;
+const lines = [];
 let out = '';
 
 for (const [ filename, fnName ] of Object.entries(files)) {
@@ -414,17 +416,45 @@ for (const [ filename, fnName ] of Object.entries(files)) {
   //   image: decoded.image,
   // });
 
+  const reverse: Record<number, number> = {
+    0b0000: 0b0000,
+    0b0001: 0b1000,
+    0b0010: 0b0100,
+    0b0011: 0b1100,
+    0b0100: 0b0010,
+    0b0101: 0b1010,
+    0b0110: 0b0110,
+    0b0111: 0b1110,
+    0b1000: 0b0001,
+    0b1001: 0b1001,
+    0b1010: 0b0101,
+    0b1011: 0b1101,
+    0b1100: 0b0011,
+    0b1101: 0b1011,
+    0b1110: 0b0111,
+    0b1111: 0b1111,
+  };
+
   const compressed = compressImage(decoded);
   console.log(`Compressed size: ${compressed.length} bytes`);
   
+  lines.push(lineCount + 64);
+
   while (compressed.length % 128 != 0) compressed.push(0);
-  for (let i = 0; i < compressed.length; i++) {
-    if (i % 128 == 0) out += '\n';
+  for (let i = 0; i < compressed.length; i += 2) {
+    if (i % 128 == 0) {
+      out += '\n'
+      lineCount++;
+    }
+
     if (compressed[i] > 15) throw new Error('What the FUCK?? ' + compressed[i]);
-    out += compressed[i].toString(16).toLowerCase();
+    // out += compressed[i].toString(16).toLowerCase();
+    let c = reverse[compressed[i]].toString(16).toLowerCase();
+
+    if (compressed[i + 1] > 15) throw new Error('What the FUCK?? ' + compressed[i + 1]);
+    out += c + reverse[compressed[i + 1]].toString(16).toLowerCase();
   }
   // console.log(out);
-
   // console.log('=== Layer Analysis ===');
   // visualizeLayers(layers);
 
@@ -435,7 +465,8 @@ for (const [ filename, fnName ] of Object.entries(files)) {
   // // console.log('images:', compressed.length);
   // Deno.writeTextFileSync('out.txt', toLua(fnName, compressed));
 
-  console.log(filename);
+  // console.log(filename);
 }
 
 console.log(out);
+console.log(lines);
