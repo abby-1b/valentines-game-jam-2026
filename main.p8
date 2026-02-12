@@ -9,6 +9,7 @@ screen_intro=1 -- not implemented
 screen_game=2
 
 frame_count=0
+delta=0
 
 score=0
 function _init()
@@ -25,42 +26,93 @@ function _update60()
 	if(screen==screen_game)update_game()
 end
 
-background=0
 function _draw()
-	cls(background)
 	frame_count+=1
+	local t=time()
 	if screen==screen_title then
 		draw_title()
-	end
-	if screen==screen_intro then
+		if(btnp(❎)) then
+			screen=screen_intro
+		end
+	elseif screen==screen_intro then
 		draw_intro()
-	end
-	if screen==screen_game then
+		-- if(btnp(❎)) then
+		-- 	screen=screen_game
+		-- end
+	elseif screen==screen_game then
 		draw_game()
 	end
 end
 
 -- title
 function draw_title()
+	cls(0)
 	print("cupid cupid!", 4, 64-8)
 	if(frame_count%25<10) then
 		print("[press ❎ to play]", 4, 64+8)
 	end
-		
-	if(btn(❎)) then
-		screen=screen_intro
-	end
 end
 
 -- intro
+intro_frames=0
+intro_pressed=0
+intro_presses=0
+dialogue_anim=0
+intro_dialogue={
+	"cupid: oh no! ❎",
+	"too little love! ❎",
+	"too much hate! ❎",
+	"i should... ❎"
+}
 function draw_intro()
-	dcmp(64,0,0)
-	dcmp(67,0,0)
-	dcmp(79,0,43 )
-	print(stat(1)*100,0,120)
+	intro_frames += 2/stat(7)
+
+	cls(12)
+
+	s=stat(1)
+
+	local pan=1-(1/(1+intro_frames))
+
+	dcmp(64,0,30+pan*2)
+	dcmp(67,0,0+pan*8)
+	dcmp(79,0,43+pan*8)
+
+	local walk_frames=min(intro_frames*8, 32)
+	spr(16,66,119+pan*8-walk_frames+sin(intro_frames>>1)*1,1,2)
+	spr(1,56,118+pan*8-walk_frames,2,2)
+
+	dcmp(85,0,73+pan*22)
+
+	if intro_frames>7 then
+		if btn(❎)and intro_pressed==0 then
+			intro_presses+=1
+			dialogue_anim=0
+			intro_pressed=1
+		else
+			intro_pressed=0
+		end
+		if intro_presses==#intro_dialogue then
+			intro_presses=0
+			screen=screen_game
+		end
+		dialogue_anim+=1
+		t=intro_dialogue[intro_presses+1]
+		print(sub(t,1,dialogue_anim),64-(#t)*2,84,0)
+	end
+
+	-- if frame_count%2==0 then
+	-- 	print(s*100,00,100,8)
+	-- 	print(stat(1)*100,30,100,8)
+	-- else
+	-- 	print(s*100,00,108,8)
+	-- 	print(stat(1)*100,30,108,8)
+	-- end
 end
 
 -- game
+frames_without_shooting=0
+has_shot_during_game=false
+
 function draw_game()
 	cls(12)
 	
@@ -73,6 +125,11 @@ function draw_game()
 	
 	foreach(enemies,draw_enemy)
 	foreach(powers,draw_power)
+
+	frames_without_shooting+=1
+	if frames_without_shooting>240 and not has_shot_during_game then
+		print("press ❎ to shoot!", 32, 64-3, 8)
+	end
 end
 
 function update_game()
@@ -123,14 +180,16 @@ function update_player(p)
 	p.y+=p.dy
 
 	--collide
-	if p.x <=0 then p.x=0 end
-	if p.x >=113 then p.x=113 end
-	if p.y <=0 then p.y=0 end
-	if p.y >=113 then p.y=113 end
+	if(p.x<=0)p.x=0
+	if(p.x>=113)p.x=113
+	if(p.y<=0)p.y=0
+	if(p.y>=113)p.y=113
 	
 	p.cooldown-=1
 	if btnp(❎) and p.cooldown<=0 then
 		sfx(0)
+		frames_without_shooting=0
+		has_shot_during_game=true
 		p.cooldown=player_reload_cooldown
 		make_arrow(p.x,p.y) 
 		
@@ -283,7 +342,7 @@ function make_enemy()
 end
 
 function update_all_enemies()
-	if frame_count%120==0 then
+	if frame_count%(120-score)==0 then
 		make_enemy()
 	end
 end
@@ -465,123 +524,109 @@ function collision(a,b)
 	return not (a.x>b.x+b.w or a.y>b.y+b.h or a.x+a.w<b.x or a.y+a.h<b.y)
 end
 -->8
---decompression
-
+--decompression - ULTRA OPTIMIZED
 -- global bit reader state
-local bit_i   -- absolute bit index
 local base_y  -- y offset in texture
 
--- read 1 bit from the compressed stream
-local function read_bit()
-	local i = bit_i
-	bit_i = i + 1
+-- cache common values
+local _rectfill = rectfill
 
-	-- pixel index inside texture
-	local p = flr(i / 4)
-	local px = p & 127
-	local py = base_y + (p >> 7)
-
-	local nib = sget(px, py)
-	return (nib >> (3 - (i & 3))) & 1
+local function refill()
+	buffer = @(addr)
+	bits_left = 8
+	addr += 1
 end
 
--- read n bits, MSB first
+local function read_bit()
+	if bits_left == 0 then
+		refill()
+	end
+	local bit = buffer & 1
+	buffer >>= 1
+	bits_left -= 1
+	return bit
+end
+
 local function read_bits(n)
 	local v = 0
 	for i=1,n do
-		v = (v << 1) | read_bit()
+			v = (v << 1) | read_bit()
 	end
 	return v
 end
 
 local function read_vle()
-	local result = 0
-	local shift = 0
-
-	for i=1,5 do                -- safety: max 5 bytes (handles up to 35 bits)
-		local byte = read_bits(8)  -- read next full byte (msb is continuation)
-		result = result | ((byte & 0x7f) << shift)
-		if (byte & 0x80) == 0 then
-			return result
-	end
-
-	shift = shift + 7
-	end
-
-	-- if we get here the data is malformed (too many continuation bytes)
-	-- return result anyway or handle error as you prefer
-	return result
+		local result = 0
+		local shift = 0
+		for i=1,5 do
+				local v = read_bits(8)
+				result |= (v & 0x7f) << shift
+				if (v & 0x80) == 0 then
+						return result
+				end
+				shift += 7
+		end
+		return result
 end
 
--- matching writeBlockCount()
-local function read_blockcount()
-	if read_bit() == 0 then return 0 end
-	if read_bit() == 0 then
-		return 1 + read_bits(2)
-	end
-	if read_bit() == 0 then
-		return 4 + read_bits(4)
-	end
-	return read_vle()
+local function read_count()
+		if read_bit() == 0 then
+				return 0
+		end
+		if read_bit() == 0 then
+				return 1 + read_bits(2)
+		end
+		if read_bit() == 0 then
+				return 4 + read_bits(4)
+		end
+		return read_vle()
 end
 
--- matching writeRunLength()
 local function read_run()
-	if read_bit() == 0 then return 1 end
-
-	if read_bit() == 0 then
-		return 2 + read_bits(2)
-	end
-
-	if read_bit() == 0 then
-		return 5 + read_bits(5)
-	end
-
-	if read_bit() == 0 then
-		return 33 + read_bits(8)
-	end
-
-	return read_vle()
+		if(read_bit() == 0)return 1
+		if(read_bit() == 0)return 2 + read_bits(2)
+		if(read_bit() == 0)return 5 + read_bits(5)
+		if(read_bit() == 0)return 33 + read_bits(8)
+		return read_vle()
 end
 
--- main decompressor
+-- main decompressor - everything inlined!
 function dcmp(data_start_y, draw_x, draw_y)
+	addr = data_start_y * 64
+	buffer = 0
+	bits_left = 0
 	base_y = data_start_y
-	bit_i	= 0
-
+	
 	local w = read_bits(8)
 	local h = read_bits(8)
-	local layers = read_blockcount()
-	local last_block=""
-
+	
+	local layers = read_count()
+	
 	for l=1,layers do
 		local color = read_bits(4)
-		local blocks = read_blockcount()
-
+		
+		local blocks = read_count()
+		
 		local x = 0
 		local y = 0
-
+			
 		for b=1,blocks do
 			local val = read_bit()
 			local len = read_run()
-			if(val==1)last_block=last_block..","..len
-
+			
 			if val == 1 then
 				while len > 0 do
 					local space = w - x
-					local n = min(len, space)
-
-					rectfill(
+					local n = len < space and len or space
+					_rectfill(
 						draw_x + x,
 						draw_y + y,
 						draw_x + x + n - 1,
 						draw_y + y,
 						color
 					)
-
 					x += n
 					len -= n
-
 					if x >= w then
 						x = 0
 						y += 1
@@ -596,8 +641,6 @@ function dcmp(data_start_y, draw_x, draw_y)
 			end
 		end
 	end
-	
-	--print("\^$"..last_block,0,64)
 end
 
 __gfx__
@@ -665,30 +708,30 @@ cccccccccc6666cc0000000000000000000000000000000000000000000000000000000000000000
 00000000cccccccc0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000cccccccc0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000cccccccc0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-80478fef8e5dc396b80e59e0b96782e58e1396384e57e1b95f86e57e1b95f86e57e1b83b84e22e1b1384d7e336f84c2e032788c1e334f94d2e5a788c3e430390
-d1e62380c8ed2b989e533facc4f009ce47319bd86178a999d960f8a997db578b195db578b189e06478b0cabc108f102b927828f1223cbe797cf2f1e5f24f9691
-93cb2700f2c1c03cae7fb49000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-807aa7ec0fff2a9cbb872be91872b704c3957864e54e339538ce54e339538ce55e2b0380e4ce22b84e4ce1a788e47ca784719c8bc938ce3cd27aee3be09d871d
-7810cb6b84cee0b4fc06701ade0565f83da9e0863f845a7e0962f84d9be104e15e126170181e124700f0b9c43fbe713f1c05c01872ef01cb7c172d709cb7c272
-d709cb5c372d709cb5c272df09cb5c272d70dcb5c372cf09cb7c272df05cb5c372d709cb5c272df09cb5c2725698fc3723e995c2712f219bc165f093870d7419
-3c167711c33d263f0d9dc270cf518bc56865c33d662f0dc65d663705c69d46469c6dd26561c71d065e1c75cb6761c7fc169e1cbb872ee1cbb872ee1cbb872ee1
-cb9a72de9cb7a72de9cb7a72de9cb7a67721c77a65741c6fa64f49c6da64751c6ba63f59c69a63f59c67c163f51c69c164749c69c364741c6bc36572dc73c168
-705c7dc172d69cb5c172c70dca9c9726f45c8bd971ff805c7be0171e780dc7bdb722f3dca5c17de9a57ef03740ce5f89cbb1872d651872c655972a444c1c394a
-2261e5c9f1131b0e4c912263e1c9526264e5c8d2a44cbc2b0e3e952266e4c38f660489a3871ecc0933430e3d981266860cb8e260c99a18561c6d30a4ccfc3072
-e329872667e18987184c39533b0c6c38ba61ca99d86465c5531254cec32f0e2898930266e19b97124c598133244cfc388a4721132e44d1c2670de989274c98c1
-34a270dcc898531f86d29c3732661cc7e0b4b2e1ac3226161c11970df01892780cac34e2270df41c1311387796e0c889c45c17084891396224ce57912a72b489
-5395a44c09ca926604e549330272a4998338f30cf9330a71e619f2661ce3bc33a54c39c778674a98738ef0ce9531271d619b302624e3ac336604c59c7386648e
-42271ce197a4cc4d38e30ca98532271be19330e64ce36c3270c2991871ae993c04cc4e038df0cbe838db08c32f96e398c134382e3fd396f4edbd396a54e58c18
-30e59d3b3b2d3cb9032acb1f2acb8ff0c0c3034c0c3030e45cb034c0cb94b82fbd35000000000000000000000000000000000000000000000000000000000000
-804f86f6c04e5e9cbd397a72f4e5dc39732e5ccb9732e5bd396b80e57e1b9678289ca7c046118729e1811972a4c1e0396b849c394f8ee53e4394b92e059a3384
-f96db9b3383f4c2e135e700ce0dc31b84d4c38070e38c380f0e219a396de5c132a67e1a3c267f09c19230d0d34f88c1e2384b4c09c21c770c69838729e589872
-8e18d854e4acb234e4891872e65cb7c072ac8e1395b88e56e2b9578ae55e3b0e72572581832e3b989d271f4c4e8390661741c85303a4e42ebb90faee42ecb907
-b2e0ee3b6660f6d9336796d8c23c04c8c35f9ad8f0331b4d6e6b67c0cc3e13539ed8f042b8cd2e7b63c2cd3e7b5fc2cd4e7b5fc2cd4e7b5fc2cd5e6b63c2cd7e
-4b67c30ca993c3700786591385bc34c89c0b31bc40c69c0f861788d898704653e294e5c13e35704f8d5c11e376b4c6f1cb2a634c4f1db2663695e3f634c6f251
-2b4c5f2ab13caec2f2d2bf7a08000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-808086ef0ffb55d1a729f21ca3ca727f31c9bcd726f35c99ce726735c9bcf725749c91d3723f51c79a60f5181c17177155d34719c55c94748e5389f987819c4d
-e197127869c49e1b711f86dc45e1d710f875c43e1d710f8711c070ae53e1b38ae0fe1a3c4ce0de29e27705f8d1c13e36703f8e1c0de3b6cf00f1e35fc88d6f22
-b53c8cd4f22986764f2532fca2c8f29b1fca8c6f2ab0f079595e1d00000000000000000000000000000000000000000000000000000000000000000000000000
+102e1f7f17ab3c96d107a970d96e147a178c96c127ae78d9af167ae78d9af167ae78d1cd1274478d8c12be7cc6f123470c4e11387cc2f92b47a5e113c72c0c90
+b8764c10317b4d9197accf5332f009372ec89db168e15999b960f1599ebdae1d89abdae1d8197062e1d035d3801f804d94e141f844c3d7e9e3f4f87af42f9698
+9c3d4e00f43830c357efd29300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+10e65e730fff4593dd1e4d7981e4de023c9ae1627a27cc9ac137a27cc9ac137aa74d0c10723744d12723785e1172e35e12e8931d39c137c3b4e577cd709b1e8b
+e1803d6d123770d2f306e085b70a6af1cb597016cf12a5e70964f12b9d780278a78468e08187842e00f0d932cfd769cf830a3081e47f083de38e4be093de34e4
+be093da3ce4be093da34e4bf093da34e4be0b3da3ce43f093de34e4bf0a3da3ce4be093da34e4bf093da34e4a691f3ce4c799a34e84f489d386af09c1e0be289
+c386ee883ccb46cf0b9b34e03fa81d3a616a3ccb664f0b36ab66ce0a369b2626936bb46a683e8b06a783ea3d6e683ef3869783dd1e47783dd1e47783dd1e4778
+3d95e4b793de5e4b793de5e4b793de56ee483ee56ae2836f562f2936b562ea836d56cfa936956cfa936e386cfa83693862e293693c62e2836d3c6ae4b3ec3861
+e0a3eb38e4b693da38e43e0b35939e46f2a31db9e8ff10a3ed708e87e10b3edbde44fcb35a38eb791ae7f0ce2037af193dd81e4b6a81e436aa9e45222383c925
+44687a39f88c8d072398446c7839a464627a31b45223d34d07c79a4466723c1f6602195c1e873309cc2c07cb9184661603d17460399581a6836bc05233f3c0e4
+7c491e466e78191e8123c9accd0363c1d5683599b1626a3aac84a2373c4f0741919c0466789d9e8423a918cc4223f3c1152e488c4722b8346e0b79194e239138
+c254e0b33191ac8f16b493cec466833e70d2d47853c4468683889e0bf08194e10353c2744e0bf2838c88c1ee9670311932a38e012198c9644237ae9845e4d219
+ac9a522309359466027a29cc04e452991cc1fc03f9cc05e87689f466837cd3cc5a23c93ee16e2591ec17f0379ac84e8b689dc046427c53cc66023a93ec166217
+244e83789e52332bc17c03591ac44e8d789cc076237c63c4e0349981e85799c30233270c1bf03d71c1bd013c4f967c9138c2c147cfbc96f27bdbc965a27a1381
+c07a9bcdcd4bc3d90c453d8f453d1ff0303c0c2303c0c072a3d0c2303d92d14fdbc8000000000000000000000000000000000000000000000000000000000000
+10aa16f63027a793dbc9e5e4f27ab3c9ec47a33d9ec47adbc96d107ae78d96e141935e3026881e49781889e4523870c96d1293c92f177ac72c92d9470a95cc12
+f96bd9dcc1cf23478ca7e00370b3c8d12b23c10e07c13c10f074895c96b7a38c456e785c346ef093894c0b0bc2f113874c12d23093483ee03691c1e497a191e4
+1781b1a27253d4c2721981e476a3de30e453178c9ad117a674d9ae157aa7cd07e4ae4a181c47cd919b4e8f23271c90668e2831ac0c527247dd90f5772473d90e
+d47077cd6660f6b9cc6e96b134c302313caf95b1f0cc8d2b676d6e3033c78cac97b1f024d13b47ed6c343bc7edaf343b27edaf343b27edaf343ba76d6c343be7
+2d6e3c03599c3ce00e16a98c1ad3c231930dc8d32036930f168e11b191e026ac74927a38c7cae02f1ba3887ce6d236f83d456c232f8bd466c69a7cf6c236f4a8
+4d23af45d8c35734f4b4dfe582000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+10ce1a7f07a5b85e49f4835c35e4efc839d3be46fca39937e46eca39d3fe4ae29398bce4cfa83e9560fa81838e8ee8aabc2e893aa392e217ac19f91e18932b78
+9e84e16932978de88f16b32a78be80f1ea32c78be80f1e8830e057ac78dc1570f785c32370b74974ee0af1b838c7c6e0cf17830b7cd63f00f87caf311b6f44da
+c313b2f44916e62f4ac4f35431f49d8f35136f45d0f0e9a9afd70300000000000000000000000000000000000000000000000000000000000000000000000000
 __sfx__
 00020000296700000022650000001a6400000010620000000a6100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00040000114701147011460104600f4600d4500a4400443000440004200e7002e7000e7002f70027000307000f70007700317001070031700107002f70010700247001070023100281003530022600226003d700
