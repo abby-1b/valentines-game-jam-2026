@@ -66,6 +66,24 @@ intro_dialogue={
 	"too much hate! ❎",
 	"i should... ❎"
 }
+intro_good={
+	"love!",
+	"ily!",
+	"happy!",
+	"cute!",
+	"pretty!",
+	"xoxo",
+}
+intro_bad={
+	"hate",
+	"hate",
+	"hate",
+	"ugly",
+	"stupid",
+	"dumb",
+}
+good_stream=""
+bad_stream=""
 function draw_intro()
 	intro_frames += 2/stat(7)
 
@@ -78,6 +96,17 @@ function draw_intro()
 	dcmp(64,0,30+pan*2)
 	dcmp(67,0,0+pan*8)
 	dcmp(79,0,43+pan*8)
+	
+	-- local wlen=7
+	-- while #good_stream<wlen do
+	-- 	good_stream=good_stream.." "..rnd(intro_good)
+	-- end
+	-- while #bad_stream<wlen do
+	-- 	bad_stream=rnd(intro_bad).." "..bad_stream
+	-- end
+	-- bad_stream="bruhhhhhh]"
+	-- print(sub(bad_stream),102,45+pan*8,0)
+	-- bad_stream=sub(bad_stream,0,#bad_stream-2)
 
 	local walk_frames=min(intro_frames*8, 32)
 	spr(16,66,119+pan*8-walk_frames+sin(intro_frames>>1)*1,1,2)
