@@ -34,7 +34,7 @@ function _update60()
 		screen=game_over
 		music(8)
 	end
-	if score%30==0 and score>= pwrs_score then
+	if score>=pwrs_score then
 		spawn_powers()
 		pwrs_score+=pwr_every
 	end
@@ -46,7 +46,7 @@ function _draw()
 	if screen==screen_title then
 		draw_title()
 		if(btnp(❎)) then
-			screen=victory
+			init_intro()
 			music(patt)
 		end
 	elseif screen==screen_intro then
@@ -107,6 +107,15 @@ intro_bad={
 	"stupid",
 	"dumb",
 }
+-- 
+function init_intro()
+	screen=screen_intro
+	intro_frames=0
+	intro_pressed=0
+	intro_presses=0
+	dialogue_anim=0
+end
+
 good_stream=""
 bad_stream=""
 function draw_intro()
@@ -184,8 +193,8 @@ function victory_screen()
 
 	dcmp(84,0,73+22)
 
-	print("you saved valetine's!!!",40,50,7)
-	print("wanna try again? ❎",44,58,7)
+	print("you saved valetine's!!!",16+2,70+16,0)
+	print("wanna try again? ❎",24+2,78+16,0)
 end
 
 function restart()
@@ -229,7 +238,8 @@ function draw_game()
 	if boss_beat_cooldown>0 then
 		boss_beat_cooldown-=1
 		if boss_beat_cooldown==0 then
-			screen=victory
+			init_intro()
+			screen=victory -- in this order!!
 			music(6)
 		end
 	end
@@ -580,7 +590,7 @@ function spawn_enemies()
 		make_enemy()
 	end
 	
-	if score>=1 and not boss.is_spawning then
+	if score>=100 and not boss.is_spawning then
 		music(8)
 		boss.is_spawning=true
 	end
