@@ -8,12 +8,13 @@ screen_title=0
 screen_intro=1 -- not implemented
 screen_game=2
 game_over=3
+victory=4
 
 frame_count=0
 delta=0
 
 score=0
-pwrs_score=1
+pwrs_score=0
 pwr_every=30
 function _init()
 	screen=screen_title
@@ -30,7 +31,7 @@ function _update60()
 	if player.health<=0 then
 		screen=game_over
 	end
-	if score%pwr_every==0 and score>= pwrs_score then
+	if score%30==0 and score>= pwrs_score then
 		spawn_powers()
 		pwrs_score+=pwr_every
 	end
@@ -55,16 +56,12 @@ function _draw()
 	elseif screen==game_over then
 		game_over()
 		if btn(❎) then
-			score=0
-			player.health=3
-			player.x=20
-			player.y=64
-			player.power=0
-			player.clear=0
-			powers={}
-			_init()
-			draw_game()
-			start_game()
+			restart()
+		end
+	elseif screen==victory then
+		victory_screen()
+		if btn(❎) then
+			restart()
 		end
 	end
 end
@@ -168,6 +165,25 @@ end
 function start_game()
 	screen=screen_game
 	music(1)
+end
+
+function victory_screen()
+	cls(0)
+	print("you saved valetine's!!!",50,50,7)
+	print("wanna try again? ❎",50,50,7)
+end
+
+function restart()
+	score=0
+	player.health=3
+	player.x=20
+	player.y=64
+	player.power=0
+	player.clear=0
+	powers={}
+	_init()
+	draw_game()
+	start_game()
 end
 
 -- game
@@ -297,16 +313,14 @@ function update_player(p)
 	end
 	
 	if btnp(❎) and p.cooldown<=0 and p.power==power_rose then
-		sfx(2)
-		has_shot_during_game=true
-		p.cooldown=player_reload_cooldown
-		make_thorns(p.x,p.y-9,-0.5)
-		make_thorns(p.x,p.y,0)
-		make_thorns(p.x,p.y+8,0.5)
+			sfx(2)
+			p.cooldown=player_reload_cooldown
+			make_thorns(p.x,p.y-9,-0.5)
+			make_thorns(p.x,p.y,0)
+			make_thorns(p.x,p.y+8,0.5)
 	end
 	
 	if btnp(🅾️) and p.clear>0 then
-		has_shot_during_game=true
 		score+=#enemies
 		sfx(4)
 		clear()
@@ -537,8 +551,6 @@ function make_enemy()
 end
 
 function spawn_enemies()
-	local dis=min(score/2,15)
-	if frame_count%(35-dis)==0 and not boss.is_spawning then
 	local dis=min(score/2,15)
 	if frame_count%(35-dis)==0 and not boss.is_spawning then
 		make_enemy()
@@ -955,6 +967,7 @@ function update_boss()
 	if boss.health<=0 then
 		boss.active_time=0
 		boss.is_spawing=false
+		screen=victory
 	end
 end
 
@@ -1085,6 +1098,5 @@ __sfx__
 000100002c6102962028620286202a6102d6102d6103f6000060000600000000000000000000002a650246501c650176501765000000000000000000000000000000023650286502b6502d650000000000000000
 __music__
 03 05434344
-01 08094344
-02 0a094344
+03 08094344
 
