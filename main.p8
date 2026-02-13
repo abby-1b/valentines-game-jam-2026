@@ -13,6 +13,8 @@ frame_count=0
 delta=0
 
 score=0
+pwrs_score=0
+pwr_every=30
 function _init()
 	screen=screen_title
 	setup_boss()
@@ -21,13 +23,16 @@ function _init()
 	enemy_setup()
 	make_enemy()
 	
-	make_power()
 end
 
 function _update60()
 	if(screen==screen_game)update_game()
 	if player.health<=0 then
 		screen=game_over
+	end
+	if score%30==0 and score>= pwrs_score then
+		spawn_powers()
+		pwrs_score+=pwr_every
 	end
 end
 
@@ -50,6 +55,7 @@ function _draw()
 	elseif screen==game_over then
 		game_over()
 		if btn(❎) then
+			score=0
 			player.health=3
 			player.x=20
 			player.y=64
@@ -216,14 +222,14 @@ power_choc=3
 power_love=4
 lives_sprite=28
 
-player_reload_cooldown=10
+player_reload_cooldown=15
 player_reload_cooldown_love=8
 
 player={
 	x=20,
 	y=64,
-	w=7,
-	h=7,
+	w=9,
+	h=11,
 	health=3,
 	power=0,
 	clear=0,
@@ -299,6 +305,7 @@ function update_player(p)
 	end
 	
 	if btnp(🅾️) and p.clear>0 then
+		score+=#enemies
 		sfx(4)
 		clear()
 	end
@@ -322,6 +329,7 @@ function draw_player(p)
 	c=0
 	for i=1,p.clear do
 		spr(25,1+c,11)
+		c+=7
 	end
 	
 	if p.invincibility%4<2 then
@@ -487,6 +495,10 @@ function draw_power(power)
 	-- pal()
 	spr(power.sprite,power.x,power.y)
 end
+
+function spawn_powers()
+	make_power()
+end
 -->8
 --enemies
 
@@ -524,11 +536,11 @@ end
 
 function spawn_enemies()
 	local dis=min(score/2,105)
-	if frame_count%(120-dis)==0 and not boss.is_spawning then
+	if frame_count%(90-dis)==0 and not boss.is_spawning then
 		make_enemy()
 	end
 
-	if score>10 then
+	if score>100 then
 		boss.is_spawning=true
 	end
 end
