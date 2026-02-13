@@ -130,7 +130,7 @@ function draw_intro()
 	end
 	print(sub(bad_stream,-7,-1),102,45+pan*8,2)
 	if(frame_count%2==0)bad_stream=sub(bad_stream,1,-2)
-	print(sub(good_stream,0,7),-1,18+pan*8,8)
+	print(sub(good_stream,0,7),-1,22+pan*8,8)
 	if(frame_count%2==0)good_stream=sub(good_stream,2,-1)
 
 	local walk_frames=min(intro_frames*8, 32)
@@ -161,7 +161,7 @@ end
 
 function start_game()
 	screen=screen_game
-	music(-1,300)
+	music(1)
 end
 
 -- game
@@ -283,7 +283,7 @@ function update_player(p)
 			p.cooldown=player_reload_cooldown
 		end
 		make_arrow(p.x,p.y) 
-		
+
 		if p.power==power_cherub then
 			make_cherub_arrow(p.x,p.y-16)
 			make_cherub_arrow(p.x,p.y+11)
@@ -293,9 +293,9 @@ function update_player(p)
 	if btnp(❎) and p.cooldown<=0 and p.power==power_rose then
 			sfx(2)
 			p.cooldown=player_reload_cooldown
-			make_thorns(p.x,p.y-9)
-			make_thorns(p.x,p.y)
-			make_thorns(p.x,p.y+8)
+			make_thorns(p.x,p.y-9,-0.5)
+			make_thorns(p.x,p.y,0)
+			make_thorns(p.x,p.y+8,0.5)
 	end
 	
 	if btnp(🅾️) and p.clear>0 then
@@ -355,37 +355,41 @@ arrow_speed=3
 arrows={}
 
 function make_arrow(x,y)
-	local arrow={}
-	arrow.x=x+8
-	arrow.y=y+8
-	arrow.w=8
-	arrow.h=5
-	arrow.sprite=33
-	add(arrows,arrow)
+	add(arrows,{
+		x=x+8,
+		y=y+8,
+		w=8,
+		h=5,
+		dy=0,
+		sprite=33,
+	})
 end
 
 function make_cherub_arrow(x,y)
-	local arrow={}
-	arrow.x=x+8
-	arrow.y=y+8
-	arrow.w=7
-	arrow.h=5
-	arrow.sprite=10
-	add(arrows,arrow)
+	add(arrows,{
+		x=x+8,
+		y=y+8,
+		w=7,
+		h=5,
+		dy=0,
+		sprite=10,
+	})
 end
 
-function make_thorns(x,y)
-	local arrow={}
-	arrow.x=x+8
-	arrow.y=y+8
-	arrow.w=8
-	arrow.h=5
-	arrow.sprite=11
-	add(arrows,arrow)
+function make_thorns(x,y,dy)
+	add(arrows,{
+		x=x+8,
+		y=y+8,
+		w=8,
+		h=5,
+		dy=dy,
+		sprite=11,
+	})
 end
 
 function update_arrow(arrow)
 	arrow.x+=arrow_speed
+	arrow.y+=arrow.dy
 	if(arrow.x>130)del(arrows,arrow)
 	
 	for e in all(enemies) do
@@ -471,6 +475,16 @@ function update_power(power)
 end
 
 function draw_power(power)
+	-- local cx=0
+	-- local cy=0
+	-- local i=frame_count%4
+	-- if(i==0)cx=1
+	-- if(i==1)cy=1
+	-- if(i==2)cx=-1
+	-- if(i==3)cy=-1
+	-- for p=1,10 do pal(1,10) end
+	-- spr(power.sprite,power.x+cx,power.y+cy)
+	-- pal()
 	spr(power.sprite,power.x,power.y)
 end
 -->8
@@ -934,7 +948,7 @@ __gfx__
 000000000000000000000000000000aaaaa00000000000aaaaa40000000000aaaaa000000000dd00000000000000000000000000000000000000000000000000
 00000000000000aaaa00000000000aaaaa4a000000000aaaaaa7400000000aaaaa4a0000770dd100000000000000000000000000000000000000000000000000
 0070070000000aaaaaa000000000aaaaa7a400000000aaaaaaa740000000aaaaaa744000067dff00000000000000000000000000000000000000000000000000
-0007700000000aaaaaa000000000aaff7fff40000000aafffff740000000aaffff7f4000006ffff000000a000033b00000000000000000000000000000000000
+0007700000000aaaaaa000000000aaff7fff40000000aafffff740000000aaffff7f4000006ffff000000a000033b80000000000000000000000000000000000
 0007700000000aaaaaa000000000aaf7ff1f40000000aaf1ff1704000000aaf1f71f040000066700aaaaaaaa0000000000000000000000000000000000000000
 00700700006777aaaa7776000000af71ff1f04000000aff1ff1704000000aff1f71f04000775ff7799999a900000000000000000000000000000000000000000
 00000000077777ffff7777700000097ffffe040000000feffff7040000000feff7fe040077775f700000a0000000000000000000000000000000000000000000
@@ -1028,7 +1042,9 @@ __sfx__
 000d00003173034730397303b7303a73037730327302e7302b7302b7302d7303173035730397303a7303a7303a73039730347303173030730307303373035730357303573034730317302c7302a7303273035730
 00010000006100062000620006200061000610006103f600006000060000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 000100002a55000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00180008180202f0002f0203002013020000002f0203002018000000002f0003000013000130002f0003000018000180000000000000000000000000000000000000000000000000000000000000000000000000
+001800100000000000000100700000000000000101000010000001b00000010000000000000000050100001000000000000000000000000000000000000000000000000000000000000000000000000000000000
 __music__
 03 05434344
-00 03424344
+00 08094344
 
