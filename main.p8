@@ -26,6 +26,9 @@ end
 
 function _update60()
 	if(screen==screen_game)update_game()
+	if player.health<=0 then
+		screen=game_over
+	end
 end
 
 function _draw()
@@ -44,6 +47,19 @@ function _draw()
 		-- end
 	elseif screen==screen_game then
 		draw_game()
+	elseif screen==game_over then
+		game_over()
+		if btn(❎) then
+			player.health=3
+			player.x=20
+			player.y=64
+			player.power=0
+			player.clear=0
+			powers={}
+			_init()
+			draw_game()
+			start_game()
+		end
 	end
 end
 
@@ -67,24 +83,6 @@ intro_dialogue={
 	"too much hate! ❎",
 	"i should... ❎"
 }
-intro_good={
-	"love!",
-	"ily!",
-	"happy!",
-	"cute!",
-	"pretty!",
-	"xoxo",
-}
-intro_bad={
-	"hate",
-	"hate",
-	"hate",
-	"ugly",
-	"stupid",
-	"dumb",
-}
-good_stream=""
-bad_stream=""
 function draw_intro()
 	intro_frames += 2/stat(7)
 
@@ -97,17 +95,6 @@ function draw_intro()
 	dcmp(64,0,30+pan*2)
 	dcmp(67,0,0+pan*8)
 	dcmp(79,0,43+pan*8)
-	
-	-- local wlen=7
-	-- while #good_stream<wlen do
-	-- 	good_stream=good_stream.." "..rnd(intro_good)
-	-- end
-	-- while #bad_stream<wlen do
-	-- 	bad_stream=rnd(intro_bad).." "..bad_stream
-	-- end
-	-- bad_stream="bruhhhhhh]"
-	-- print(sub(bad_stream),102,45+pan*8,0)
-	-- bad_stream=sub(bad_stream,0,#bad_stream-2)
 
 	local walk_frames=min(intro_frames*8, 32)
 	spr(16,66,119+pan*8-walk_frames+sin(intro_frames>>1)*1,1,2)
@@ -132,13 +119,6 @@ function draw_intro()
 		print(sub(t,1,dialogue_anim),64-(#t)*2,84,0)
 	end
 
-	-- if frame_count%2==0 then
-	-- 	print(s*100,00,100,8)
-	-- 	print(stat(1)*100,30,100,8)
-	-- else
-	-- 	print(s*100,00,108,8)
-	-- 	print(stat(1)*100,30,108,8)
-	-- end
 end
 
 function start_game()
@@ -181,16 +161,25 @@ function update_game()
 	foreach(powers,update_power)
 end
 
+--game over
+function game_over()
+	cls(0)
+	print("game over!!!",37,35,7)
+	print("save valentine's day!",20,45,7)
+	print("try again? ❎",34,55,7)
+end
+
 -->8
 --player
-
-player_reload_cooldown=10
 
 power_cherub=1
 power_rose=2
 power_choc=3
 power_love=4
 lives_sprite=28
+
+player_reload_cooldown=10
+player_reload_cooldown_love=8
 
 player={
 	x=20,
@@ -242,11 +231,19 @@ function update_player(p)
 	if(p.y>=113)p.y=113
 	
 	p.cooldown-=1
-	if btnp(❎) and p.cooldown<=0 and p.power!=power_rose then
+	if (
+		btnp(❎) and p.cooldown<=0 and p.power==0
+	) or (
+		btn(❎) and p.cooldown<=0 and p.power==power_love
+	) then
 		sfx(0)
 		frames_without_shooting=0
 		has_shot_during_game=true
-		p.cooldown=player_reload_cooldown
+		if p.power==power_love then
+			p.cooldown=player_reload_cooldown_love
+		else
+			p.cooldown=player_reload_cooldown
+		end
 		make_arrow(p.x,p.y) 
 		
 		if p.power==power_cherub then
@@ -474,7 +471,7 @@ function make_enemy()
 end
 
 function spawn_enemies()
-	if frame_count%15==0 and not boss.is_spawning then
+	if frame_count%(120*dis)==0 and not boss.is_spawning then
 		make_enemy()
 	end
 
@@ -525,8 +522,11 @@ function draw_enemy(e)
 		
 		if(e.sprite>=43)e.sprite=41
 	end
-	if e.type!=0 then
+	if e.type==2 then
 		spr(e.sprite,e.x,e.y)
+		e.sprite+=0.25
+		
+		if(e.sprite>=51)e.sprite=48
 	end
 	
 end
@@ -553,8 +553,8 @@ end
 -->8
 
 --background
-clouds={}
 function setup_clouds()
+	clouds={}
 	local cloud_types={
 		{s=64,w=2,h=2},
 		{s=66,w=3,h=1},
