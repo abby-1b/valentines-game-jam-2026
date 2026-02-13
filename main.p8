@@ -450,7 +450,7 @@ function make_enemy()
 end
 
 function update_all_enemies()
-	if frame_count%15==0 then
+	if frame_count%(120*dis)==0 then
 		make_enemy()
 	end
 end
