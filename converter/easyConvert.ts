@@ -181,7 +181,8 @@ function to2DArray(image: ImageData): PColor[][] {
     const row: PColor[] = [];
     for (let x = 0; x < width; x++) {
       const i = (y * width + x) * 4;
-      row.push(closestIdx([data[i], data[i + 1], data[i + 2]]));
+      if (data[i + 3] == 0) row.push(0);
+      else row.push(closestIdx([data[i], data[i + 1], data[i + 2]]));
     }
     result.push(row);
   }
@@ -189,6 +190,7 @@ function to2DArray(image: ImageData): PColor[][] {
   return result;
 }
 
+let amt = 0;
 function extractLayers(image: PColor[][]): Layer[] {
   const height = image.length;
   const width = image[0].length;
@@ -223,7 +225,7 @@ function extractLayers(image: PColor[][]): Layer[] {
     for (const [x, y] of entry.positions) {
       mask[y][x] = 1;
     }
-    
+
     layers.push({
       color: entry.color,
       surfaceArea: entry.count,
@@ -251,6 +253,7 @@ function extractLayers(image: PColor[][]): Layer[] {
       }
     }
   }
+
 
   return layers;
 }
@@ -392,10 +395,10 @@ function analyzeCompression(original: ImageData, compressed: Uint8Array): void {
 
 // Dictionary of { filename: lua function name }
 const files = {
-  "../assets/intro_bg.png": "draw_ibg",
-  "../assets/intro_main.png": "draw_ibg",
-  "../assets/intro_shad.png": "draw_ishad",
-  "../assets/intro_fg.png": "draw_ifg",
+  "../assets/intro_bg.png": "intro_bg",
+  "../assets/intro_main.png": "intro_main",
+  "../assets/intro_fg.png": "intro_fg",
+  "../assets/outro_main.png": "outro_main",
 };
 /*
 Example:
@@ -438,7 +441,7 @@ for (const [ filename, fnName ] of Object.entries(files)) {
   const compressed = compressImage(decoded);
   console.log(`Compressed size: ${compressed.length} bytes`);
   
-  lines.push(lineCount + 64);
+  lines.push({ name: fnName, idx: lineCount + 64 });
 
   while (compressed.length % 128 != 0) compressed.push(0);
   for (let i = 0; i < compressed.length; i += 2) {
